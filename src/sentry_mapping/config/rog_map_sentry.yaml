@@ -1,0 +1,163 @@
+# ============================================================================
+# ROG-Map 配置 —— RoboMaster 哨兵（第一版：寝室桌面 bag 验证）
+# ----------------------------------------------------------------------------
+# 本文件直接被 rog_map::Config 用 yaml-cpp 解析（不是 ROS parameter server），
+# 所以键层级必须保持在 `rog_map:` 下。
+#
+# 场景说明：
+#   当前 bag 是 MID360 放在书桌上录的 static_empty_90s。
+#   FAST-LIO2 的 camera_init 原点 = 雷达启动位置（桌面 LiDAR 所在点）。
+#   在这个系下：
+#     地面约在  z ≈ -0.75m (桌高 ~0.75m)
+#     桌面就是  z ≈  0.00m
+#     天花板约  z ≈ +1.80m
+#
+# 以后上车时 (LiDAR 装在车顶云台上)，camera_init 也在车顶附近，此时：
+#     地面约在  z ≈ -0.30m (MID360 距地面 30cm)
+#     车身顶    z ≈  0.00m
+#   需要把 virtual_ground_height / virtual_ceil_height 改到 -0.35 / +0.6
+#
+# 见本文件末的 "场景切换" 章节。
+# ============================================================================
+
+rog_map:
+  # ---------- 基础分辨率 ----------
+  # 概率地图分辨率 (m)。由 0.1 提升到 0.05，提高体素颗粒度。
+  resolution: 0.05
+
+  # 膨胀地图分辨率，保持与主分辨率 2x 比例（0.1 = 2 * 0.05）
+  inflation_resolution: 0.1
+
+  # 障碍膨胀多少格 (在 inflation_resolution 尺度)
+  # inflation_step=2 -> 0.4m 膨胀 (机器人半径 0.3m + 0.1m buffer)
+  # 注意: ORIGIN_AT_CORNER 模式下 ROG-Map 会把 virtual_ceil/ground 向内收缩
+  # inflation_step * inflation_resolution (= 0.4m)，所以下面两个参数要预留空间。
+  inflation_step: 2
+
+  # 是否同时膨胀 unknown 区域 (给保守规划用，第一版关)
+  unk_inflation_en: false
+  unk_inflation_step: 1
+
+  # ---------- 地图大小 ----------
+  # 本地滑窗总尺寸 [x, y, z] (m)。以机器人为中心，机器人动了滑窗跟随。
+  # 只保留 ESDF 实际使用的局部范围，避免维护大量规划用不到的远处体素。
+  # 所有下游 range（esdf.local_update_box / visualization.range / raycasting.local_update_box）
+  # 都应 ≤ 此值，否则会被内部 clip 到 map_size 边界。
+  map_size: [ 4, 5.5, 4 ]
+
+  # 局部框中心相对机器人位姿的偏移 [x, y, z] (m)。
+  # 长边是 y 方向；垂直于长边的负方向即 -x。
+  local_map_offset: [ -0.5, 0.0, 0.0 ]
+
+  # 若关闭 map_sliding，需指定固定原点。我们用滑窗所以这个不生效但 Config 会读
+  fix_map_origin: [ 0, 0, 0 ]
+
+  # 滑窗启用
+  map_sliding:
+    enable: true
+    # 机器人位移 >= threshold 时滑动一次，降频节省性能
+    threshold: 0.3
+
+  # 前沿检测 (用于 autonomous exploration，我们不需要)
+  frontier_extraction_en: false
+
+  # ---------- 虚拟天花板 / 地面 (硬裁剪) ----------
+  # 高于 ceil / 低于 ground 的点被直接视为占据障碍，
+  # 用于过滤"天花板灯"和"地面反射"这类与导航无关的点。
+  #
+  # 陷阱: ORIGIN_AT_CORNER 模式下 ROG-Map 在 resetMapSize() 里会把实际
+  # 有效 ceil/ground 向内收缩 (inflation_step * inflation_resolution)，
+  # 所以这里填的值要比期望的"有效边界"更外扩 inflation_step * inflation_res 米。
+  #
+  # 当前设 inflation_step=2, inflation_resolution=0.2，收缩量=0.4m：
+  #   yaml 写 3.0  -> 实际有效 ceil  ≈ 2.5m (寝室天花板上方，不过滤任何点)
+  #   yaml 写 -2.0 -> 实际有效 ground ≈ -1.5m (地面下方，不过滤任何点)
+  # 寝室桌面 bag 的 z 范围约 -0.5 到 +1.5m，完全落在有效区，不会被裁。
+  virtual_ceil_height: 3.0
+  virtual_ground_height: -2.0
+
+  # ---------- ESDF (距离场) ----------
+  # 维护 3D Euclidean Signed Distance Field，每个 voxel 存到最近障碍的距离。
+  # 给 planner 查询 "到墙多远"、"梯度方向" 用。
+  # 开启代价：ROG-Map 内部每次地图更新后重新计算局部 ESDF，对 Jetson 是
+  # 可接受的开销（论文里 0.66ms，实际可能 2-5ms）。
+  esdf:
+    enable: true
+    resolution: 0.05
+    # ESDF 只在机器人周围 [x, y, z]m 内维护 (相对 odom)。
+    # 将原先长边 8m 减半，局部地图和可视化范围也保持一致。
+    local_update_box: [ 4, 5.5, 4 ]
+
+  # ---------- 输入 ROS 话题 ----------
+  # FAST-LIO2 的输出：
+  #   /cloud_registered —— world (camera_init) 系下配准后的当前帧点云
+  #   /Odometry         —— camera_init → body 的位姿
+  ros_callback:
+    enable: true
+    cloud_topic: "/cloud_registered"
+    odom_topic:  "/Odometry"
+    odom_timeout: 2.0
+
+  # ---------- 可视化 ----------
+  visualization:
+    enable: true
+    use_dynamic_reconfigure: false
+    # 可视化频率 (Hz)
+    time_rate: 15.0
+    frame_rate: 0
+    # 可视化范围 [x, y, z]m，与 ESDF map 保持一致
+    range: [ 4, 5.5, 4 ]
+    # 发布消息的 frame_id —— 注意代码里硬编码 "world"，
+    # 实际依靠 launch 里的 static_tf (camera_init ↔ world) 让 RViz 以 camera_init 为 fixed frame 时也能看
+    frame_id: "world"
+    pub_unknown_map_en: false
+
+  # ---------- 输入点云过滤 ----------
+  # intensity 阈值。MID360 一般不带 intensity，或值比较高，-10 等于不过滤
+  intensity_thresh: -10
+  # 每 k 帧处理一次 (1 = 每帧都处理)。10Hz 输入直接设 1 即可
+  point_filt_num: 1
+
+  # ---------- 光线投射 (动态物体清除) ----------
+  # 开启后，对每一帧每个扫到的点 p：
+  #   - 从 odom→p 的射线路径上所有 voxel 标记为 miss (概率下降 p_miss=0.49)
+  #   - 终点 p 本身标记为 hit (概率上升 p_hit=0.9)
+  #   - voxel 概率 < p_min 时被判为 Known Free；> p_occ 时判为 Occupied
+  #
+  # 这是 ROG-Map 对抗动态物体的核心能力：人走过去会留下短暂占据，
+  # 但后续射线穿过后概率快速下降，voxel 回归 Free，不留"幽灵障碍"。
+  #
+  # CPU 代价：每帧对每个点做 Bresenham 3D raycasting。笔电/Jetson 都顶得住。
+  raycasting:
+    enable: true
+    batch_update_size: 1
+    # 在机器人周围 [x, y, z]m 范围内做 raycasting 更新，与 ESDF map 保持一致
+    local_update_box: [ 4, 5.5, 4 ]
+    # 射线有效距离 [min, max] m：小于 min 的点忽略（机身反射），大于 max 的太远误差大
+    ray_range: [ 0.3, 15 ]
+
+    # 概率更新参数 (log-odds 体系)
+    p_min:  0.12    # 小于此概率 → Known Free
+    p_miss: 0.40    # 提高遗忘速度：动态障碍离开后更快回归 free
+    p_free: 0.499   # free 判定阈值
+    p_occ:  0.75    # 降低占据判定门槛滞后，减少“粘住”现象
+    p_hit:  0.85    # 略降 hit 强度，避免单次命中过度固化障碍
+    p_max:  0.98    # 概率上限
+    unk_thresh: 1.0
+
+# ============================================================================
+# 场景切换参考值
+# ----------------------------------------------------------------------------
+# 【寝室桌面 bag (当前值)】
+#   virtual_ceil_height:    1.5
+#   virtual_ground_height: -0.8
+#
+# 【上车 (MID360 在车顶云台，距地 ~0.3m)】
+#   virtual_ceil_height:    0.6   # 哨兵高度约 0.3m，再留 0.3m buffer 过滤天花板
+#   virtual_ground_height: -0.35  # MID360 在 z=0，地面在 z≈-0.3
+#
+# 【RMUC 场地大地图】
+#   map_size:              [30, 30, 4]
+#   raycasting.enable:     true   (动态物体多，必须开)
+#   raycasting.local_update_box: [30, 30, 5]
+# ============================================================================

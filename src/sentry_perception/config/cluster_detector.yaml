@@ -1,0 +1,25 @@
+# cluster_detector 参数 —— 对已过滤的障碍物点云做欧式聚类
+#
+# cluster_tolerance：
+#   欧式距离阈值，两点间距 < 此值视为"连通"。室内 0.2-0.4 m 适合分清人/桌/椅，
+#   太小会把一个人切成多个 cluster，太大会把人和墙粘在一起。
+# min_cluster_size:
+#   小于此点数的 cluster 丢弃（过滤噪声 / 飞点）
+# max_cluster_size:
+#   大于此点数的 cluster 丢弃（通常是墙，不算作独立障碍物；设 2000 对 voxel 后的点云够用）
+
+cluster_detector:
+  ros__parameters:
+    input_topic:     /perception/obstacle_cloud
+    markers_topic:   /perception/obstacle_markers
+    centroids_topic: /perception/obstacle_centroids
+
+    cluster_tolerance: 0.15
+    min_cluster_size:  15
+    max_cluster_size:  2000
+
+    box_line_width:    0.02
+    marker_lifetime_s: 0.3
+    color_by_id:       true
+
+    log_every_n: 20

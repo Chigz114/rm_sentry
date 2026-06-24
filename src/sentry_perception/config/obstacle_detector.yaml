@@ -1,0 +1,31 @@
+# obstacle_detector 第一版参数 —— body 坐标系下
+#
+# 所有距离单位 m。ROI 是以 lidar 为原点的长方体盒子。
+# ground_z_thresh 约为 -LiDAR安装高度 + 5cm 余量，
+#   - 手持 / 地面放置 测试 ≈ -0.05 ~ -0.10
+#   - 哨兵甲板 (~0.25m) 安装 ≈ -0.20 ~ -0.25
+#   - 哨兵云台顶 (~0.5m)   安装 ≈ -0.45 ~ -0.50
+# 现阶段是手持采集的 bag，暂取 -0.05 较合适。
+#
+# voxel_size: 体素边长，点密度下采样。0.05 过密、0.2 太粗，室内 0.08~0.12 合适。
+
+obstacle_detector:
+  ros__parameters:
+    input_topic:  /cloud_registered_body
+    output_topic: /perception/obstacle_cloud
+
+    # ROI (body 系)
+    roi_x_min: -5.0
+    roi_x_max:  5.0
+    roi_y_min: -5.0
+    roi_y_max:  5.0
+    roi_z_min: -1.0
+    roi_z_max:  2.0
+
+    # 下采样 / 地面
+    voxel_size:       0.10
+    ground_z_thresh: -0.05      # 手持采集 bag 场景，后续上车后改到 -0.25
+    min_points_out:   10
+
+    # 日志频率（每 N 帧打一次统计；0 = 关闭）
+    log_every_n: 20

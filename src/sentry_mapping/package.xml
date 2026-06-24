@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>sentry_mapping</name>
+  <version>0.0.1</version>
+  <description>
+    RoboMaster 哨兵感知地图节点。当前 sim_ws 主链路使用 height-gated traversability_mapper
+    从 FAST-LIO2 的 /cloud_registered + /Odometry 生成 2.5D costmap；ROG-Map wrapper
+    仅在 rog_map 包存在时作为可选目标构建。
+  </description>
+  <maintainer email="arch@sentry.local">arch</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>pcl_conversions</depend>
+  <depend>tinyxml2_vendor</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
