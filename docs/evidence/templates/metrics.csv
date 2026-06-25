@@ -1,0 +1,11 @@
+metric,value,unit,source,notes
+peak_tracking_error,,,, 
+mean_tracking_error,,,, 
+min_obstacle_clearance,,,, 
+fallback_count,,,, 
+odom_hz,,,, 
+costmap_hz,,,, 
+traj_sample_hz,,,, 
+control_dt_min,,,, 
+control_dt_mean,,,, 
+control_dt_max,,,, 

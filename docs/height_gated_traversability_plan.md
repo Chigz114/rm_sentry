@@ -3,6 +3,7 @@
 > 日期：2026-06-22
 > 状态：阶段 1、阶段 2 已实现并验证；阶段 3.0-3.4 已实现并验证（3.4 MINCO 用 Python 实现，偏离原 C++/GCOPTER 方案）
 > 更新：2026-06-22，补全 3.4 MINCO 实现状态、参数偏离记录、调试历程与已知问题
+> 清理说明：2026-06-25 后，`goal_controller.py`、`path_tracker.py`、`pure_pursuit.py`、`traj_publisher.py` 以及旧 ROG 文件 `perception_mapper_node.cpp`、`rog_map_sentry.yaml`、`mapping.launch.py`、`replay_mapping.launch.py`、`mapping.rviz` 均已从当前 workspace 移除；下文相关内容仅作为历史演化记录。
 
 ## 背景
 
@@ -35,7 +36,7 @@ LiDAR 提至 0.4m 后，0.2m 高台障碍物被 ROG-Map raycasting 清除为 fre
 | 文件 | 作用 | 改动 |
 |------|------|------|
 | `sentry_mapping/src/traversability_mapper_node.cpp` | **新建**：height-gate + log-odds 节点 | ✅ 已实现 |
-| `sentry_mapping/src/perception_mapper_node.cpp` | 继承 ROGMapROS + 2.5D 投影 | 保留作回退，不再启动 |
+| `sentry_mapping/src/perception_mapper_node.cpp` | 继承 ROGMapROS + 2.5D 投影 | 已删除；仅保留历史记录 |
 | `sentry_mapping/CMakeLists.txt` | 构建配置 | ✅ 新增 traversability_mapper 目标 |
 | `sentry_perception/sentry_perception/esdf2d_node.py` | OccupancyGrid → ESDF | **不改** |
 | `rm_nav_bringup/launch/sim_perception.launch.py` | 感知启动 | ✅ 换节点 + 参数 |
@@ -48,7 +49,7 @@ LiDAR 提至 0.4m 后，0.2m 高台障碍物被 ROG-Map raycasting 清除为 fre
 | `data/generated_worlds/rm3v3_sym_v1.world` | Gazebo 场地定义（box 障碍物） | 阶段 2 解析生成先验栅格 |
 
 ### 关键约束
-- `sentry_mapping` / `sentry_perception` / `rog_map` 在 sim_ws 中是指向 real_ws 的**符号链接**，改一处两个 ws 同时生效
+- `sentry_mapping` / `sentry_perception` / `rog_map` 曾在 sim_ws 中作为指向 real_ws 的**符号链接**；当前 `sentry_mapping`、`sentry_perception` 已是本地包，`rog_map` symlink 已删除
 - `/cloud_registered` 帧名：仿真 `lidar_odom`，真车 `camera_init`
 - costmap 当前固定全场（13×9m @ 0.1m，frame=lidar_odom，follow_robot=false）
 - esdf2d QoS：sub=BEST_EFFORT，pub=RELIABLE，兼容沿用
@@ -407,7 +408,7 @@ cloud_topic: /cloud_registered  # QoS: RELIABLE（匹配 FAST-LIO2 publisher）
 
 5. **log-odds 上下限**：必须设上限防单帧噪声把 cell 打成永久障碍；设下限防穿负。✅ 已实现 cap=2.0, floor=-2.0。
 
-6. **ROG-Map 退场**：移除后失去其 raycasting，这是预期。`rog_map_sim.yaml` 与 sim_ws 的 `src/rog_map` symlink 已在后续清理中删除；`perception_mapper` 仅作为 real_ws-owned 可选目标保留，sim_ws 缺少 `rog_map` 时会跳过构建。✅
+6. **ROG-Map 退场**：移除后失去其 raycasting，这是预期。`rog_map_sim.yaml`、sim_ws 的 `src/rog_map` symlink，以及 `perception_mapper` wrapper/config/launch/RViz 文件均已在后续清理中删除。✅
 
 7. **QoS**：现有 pub=RELIABLE、esdf2d sub=BEST_EFFORT，兼容沿用。✅
 

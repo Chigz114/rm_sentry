@@ -15,14 +15,12 @@ setup(
     zip_safe=True,
     maintainer='dev',
     maintainer_email='dev@robomaster.local',
-    description='Sentry Phase-3 controller',
+    description='Sentry Phase-3 trajectory tracker and keyboard teleop tools.',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'keyboard_teleop = sentry_controller.keyboard_teleop:main',
-            'goal_controller = sentry_controller.goal_controller:main',
-            'path_tracker    = sentry_controller.path_tracker:main',
             'traj_tracker    = sentry_controller.traj_tracker:main',
         ],
     },

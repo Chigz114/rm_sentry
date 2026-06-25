@@ -98,8 +98,8 @@ Use this for quick full-chain startup.
 ```bash
 cd <workspace>
 
-ps -C gzserver,gzclient,relocalization_node,traversability_mapper,esdf2d_node,laser_mapping,robot_state_publisher,costmap_inflator,jps_node,minco_planner_node,traj_tracker,path_tracker,rviz2 --no-headers -o pid 2>/dev/null | xargs -r kill -9
-ps aux | grep -E 'relocalization|esdf2d|traversability_mapper|bringup_sim|sim_perception|sim_planner|rm_simulation|gzserver|gzclient|laser_mapping|robot_state_publisher|costmap_inflator|jps_node|minco_planner|traj_tracker|path_tracker|rviz2' | grep -v grep | awk '{print $2}' | xargs -r kill -9
+ps -C gzserver,gzclient,relocalization_node,traversability_mapper,esdf2d_node,laser_mapping,robot_state_publisher,costmap_inflator,jps_node,minco_planner_node,traj_tracker,rviz2 --no-headers -o pid 2>/dev/null | xargs -r kill -9
+ps aux | grep -E 'relocalization|esdf2d|traversability_mapper|bringup_sim|sim_perception|sim_planner|rm_simulation|gzserver|gzclient|laser_mapping|robot_state_publisher|costmap_inflator|jps_node|minco_planner|traj_tracker|rviz2' | grep -v grep | awk '{print $2}' | xargs -r kill -9
 sleep 2
 
 nohup setsid bash -c 'export DISPLAY=:1 && source /opt/ros/humble/setup.bash && source install/setup.bash && ros2 launch rm_nav_bringup bringup_sim.launch.py world:=RM3V3 lio:=fastlio mode:=mapping lio_rviz:=False nav_rviz:=False' > /tmp/bringup.log 2>&1 < /dev/null & disown
@@ -120,10 +120,10 @@ Do not use `pkill -f`; it can match its own command and hang.
 Stop simulation, perception, planning, and RViz:
 
 ```bash
-ps -C gzserver,gzclient,relocalization_node,traversability_mapper,esdf2d_node,laser_mapping,robot_state_publisher,costmap_inflator,jps_node,minco_planner_node,traj_tracker,path_tracker,rviz2 --no-headers -o pid 2>/dev/null | xargs -r kill -9
-ps aux | grep -E 'relocalization|esdf2d|traversability_mapper|bringup_sim|sim_perception|sim_planner|rm_simulation|gzserver|gzclient|laser_mapping|robot_state_publisher|costmap_inflator|jps_node|minco_planner|traj_tracker|path_tracker|rviz2' | grep -v grep | awk '{print $2}' | xargs -r kill -9
+ps -C gzserver,gzclient,relocalization_node,traversability_mapper,esdf2d_node,laser_mapping,robot_state_publisher,costmap_inflator,jps_node,minco_planner_node,traj_tracker,rviz2 --no-headers -o pid 2>/dev/null | xargs -r kill -9
+ps aux | grep -E 'relocalization|esdf2d|traversability_mapper|bringup_sim|sim_perception|sim_planner|rm_simulation|gzserver|gzclient|laser_mapping|robot_state_publisher|costmap_inflator|jps_node|minco_planner|traj_tracker|rviz2' | grep -v grep | awk '{print $2}' | xargs -r kill -9
 sleep 2
-ps aux | grep -E 'relocalization|esdf2d|traversability|gzserver|gzclient|minco|jps_node|traj_tracker|path_tracker' | grep -v grep | wc -l
+ps aux | grep -E 'relocalization|esdf2d|traversability|gzserver|gzclient|minco|jps_node|traj_tracker' | grep -v grep | wc -l
 ```
 
 Expected final output is `0`.
@@ -131,8 +131,8 @@ Expected final output is `0`.
 Stop everything except RViz:
 
 ```bash
-ps -C gzserver,gzclient,relocalization_node,traversability_mapper,esdf2d_node,laser_mapping,robot_state_publisher,costmap_inflator,jps_node,minco_planner_node,traj_tracker,path_tracker --no-headers -o pid 2>/dev/null | xargs -r kill -9
-ps aux | grep -E 'relocalization|esdf2d|traversability_mapper|bringup_sim|sim_perception|sim_planner|rm_simulation|gzserver|gzclient|laser_mapping|robot_state_publisher|costmap_inflator|jps_node|minco_planner|traj_tracker|path_tracker' | grep -v grep | awk '{print $2}' | xargs -r kill -9
+ps -C gzserver,gzclient,relocalization_node,traversability_mapper,esdf2d_node,laser_mapping,robot_state_publisher,costmap_inflator,jps_node,minco_planner_node,traj_tracker --no-headers -o pid 2>/dev/null | xargs -r kill -9
+ps aux | grep -E 'relocalization|esdf2d|traversability_mapper|bringup_sim|sim_perception|sim_planner|rm_simulation|gzserver|gzclient|laser_mapping|robot_state_publisher|costmap_inflator|jps_node|minco_planner|traj_tracker' | grep -v grep | awk '{print $2}' | xargs -r kill -9
 ```
 
 Stop only RViz:

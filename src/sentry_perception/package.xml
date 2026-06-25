@@ -3,7 +3,7 @@
 <package format="3">
   <name>sentry_perception</name>
   <version>0.1.0</version>
-  <description>RoboMaster 哨兵感知节点：ROI / 体素下采样 / 地面过滤 / 障碍物聚类（占位）。</description>
+  <description>RoboMaster sentry relocalization and 2D ESDF nodes for the active simulation pipeline.</description>
   <maintainer email="arch@sentry.local">arch</maintainer>
   <license>Apache-2.0</license>
 

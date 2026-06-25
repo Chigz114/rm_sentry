@@ -8,7 +8,7 @@ Current active controller:
 /planner/traj_samples -> traj_tracker -> /cmd_vel_chassis -> Gazebo mecanum/chassis plugin
 ```
 
-Do not start with `pure_pursuit`, `path_tracker`, or `goal_controller`; they are not the current Stage 3 controller.
+Do not look for `pure_pursuit`, `path_tracker`, or `goal_controller`; they have been removed from the current workspace. The current Stage 3 controller is `traj_tracker`.
 
 ## First Checks
 
@@ -199,4 +199,3 @@ Run the same route before and after the change. Record:
 | visible wall contact risk | RViz/Gazebo |
 
 If only visual smoothness improved but tracking error or wall risk worsened, keep debugging.
-

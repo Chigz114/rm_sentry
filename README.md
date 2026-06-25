@@ -23,9 +23,9 @@ src/
   sentry_mapping/         # height-gated traversability mapper
   sentry_perception/      # ESDF and relocalization nodes
   pb_rm_simulation/       # lightweight Polar Bear simulation vendor subset
-docs/                     # architecture, reference, runbooks, validation
+docs/                     # current truth, modules, reference, runbooks, testbook, history, evidence
 tools/                    # generation utilities
-scripts/                  # diagnostic utilities
+scripts/                  # reserved for ad-hoc local scripts; currently empty
 ```
 
 `build/`, `install/`, `log/`, rosbag outputs, and debug CSV/graph dumps are intentionally ignored.
@@ -83,13 +83,23 @@ docs/index.md
 
 Useful next pages:
 
+- `docs/current/project_state.md`
+- `docs/current/agent_bootstrap.md`
+- `docs/current/architecture.md`
+- `docs/current/active_pipeline.md`
+- `docs/current/dataflow_and_frames.md`
+- `docs/current/active_legacy.md`
 - `docs/architecture/runtime_flows.md`
+- `docs/modules/README.md`
 - `docs/reference/interfaces.md`
 - `docs/reference/parameters.md`
-- `docs/reference/active_legacy.md`
 - `docs/runbooks/bringup.md`
-- `docs/validation/planning_validation.md`
-- `docs/validation/control_validation.md`
+- `docs/testbook/localization_validation.md`
+- `docs/testbook/mapping_validation.md`
+- `docs/testbook/planning_validation.md`
+- `docs/testbook/control_validation.md`
+- `docs/testbook/system_validation.md`
+- `docs/archive/deprecated_implementations.md`
 
 ## Portability Rules
 

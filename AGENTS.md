@@ -8,11 +8,17 @@ Read these before changing behavior:
 
 ```text
 docs/index.md
-docs/agent_bootstrap.md
+docs/current/project_state.md
+docs/current/agent_bootstrap.md
+docs/current/architecture.md
+docs/current/active_pipeline.md
+docs/current/dataflow_and_frames.md
 docs/architecture/runtime_flows.md
+docs/modules/README.md
 docs/reference/interfaces.md
 docs/reference/parameters.md
-docs/reference/active_legacy.md
+docs/current/active_legacy.md
+docs/archive/deprecated_implementations.md
 ```
 
 For operation/debugging:
@@ -21,8 +27,11 @@ For operation/debugging:
 docs/runbooks/bringup.md
 docs/runbooks/debug_planning.md
 docs/runbooks/debug_control.md
-docs/validation/planning_validation.md
-docs/validation/control_validation.md
+docs/testbook/localization_validation.md
+docs/testbook/mapping_validation.md
+docs/testbook/planning_validation.md
+docs/testbook/control_validation.md
+docs/testbook/system_validation.md
 ```
 
 ## Active Runtime
@@ -39,7 +48,7 @@ pb_rm_simulation/Gazebo + rm_nav_bringup FAST-LIO2
 -> /cmd_vel_chassis
 ```
 
-`pure_pursuit` and ROG-Map based mapping are legacy/reference paths unless a user explicitly asks to revive them.
+Old controller paths such as `pure_pursuit`, `path_tracker`, `goal_controller`, and fixed `traj_publisher` have been removed from this workspace. Old ROG-Map based mapping files have also been removed from `sim_ws`; use `docs/archive/` and `docs/history/` only as reconstruction context.
 
 ## Repository Boundaries
 

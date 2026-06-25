@@ -1,0 +1,16 @@
+# Copy effective launch/yaml/runtime parameters here for the run.
+git_commit:
+stage1:
+  launch:
+  fastlio_yaml:
+stage2:
+  launch:
+  relocalization:
+  traversability:
+  esdf2d:
+stage3:
+  launch:
+  costmap_inflator:
+  jps:
+  minco:
+  traj_tracker:

@@ -95,7 +95,7 @@ Important outputs:
 
 Notes:
 
-- Current simulation mapping does not launch ROG-Map.
+- Current simulation mapping uses `traversability_mapper`; old ROG-Map runtime files have been removed from `sim_ws`.
 - `traversability_mapper` directly consumes `/cloud_registered` and `/Odometry`.
 - `traversability_mapper` uses the generated Gazebo world file as a static prior and publishes a `map` frame costmap.
 

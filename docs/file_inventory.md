@@ -1,6 +1,6 @@
 # rm_sentry_sim_ws File Inventory
 
-Last updated: 2026-06-23
+Last updated: 2026-06-25
 
 This document summarizes the workspace structure after the height-gated traversability, JPS/MINCO planning, and `traj_tracker` control work. It is intentionally focused on project-owned files and modified simulation integration points; third-party/upstream packages are grouped instead of listed exhaustively.
 
@@ -8,10 +8,10 @@ This document summarizes the workspace structure after the height-gated traversa
 
 | Path | Role | Notes |
 |------|------|-------|
-| `docs/` | Project documentation and operations notes | Main design history lives here. |
-| `scripts/` | One-off diagnostics | Costmap, density, hit, and z-histogram checks. |
+| `docs/` | Project documentation and operations notes | Current truth, module contracts, testbook, history, archive, and evidence templates. |
+| `scripts/` | Reserved for ad-hoc local scripts | Currently empty; old one-off costmap/density/hit/z-histogram diagnostics were removed. |
 | `src/sentry_planner/` | Project-owned planning package | Costmap inflation, JPS, ESDF, MINCO, stage3 launch. |
-| `src/sentry_controller/` | Project-owned control package | Current `traj_tracker` plus older controller baselines/tools. |
+| `src/sentry_controller/` | Project-owned control package | Current `traj_tracker` plus `keyboard_teleop` manual smoke-test tool. |
 | `src/sentry_mapping/` | Project-owned mapping package | Local package directory; no longer an absolute symlink to `real_ws`. |
 | `src/sentry_perception/` | Project-owned perception package | Local package directory; no longer an absolute symlink to `real_ws`. |
 | `src/pb_rm_simulation/` | Lightweight Polar Bear simulation vendor subset | Gazebo RM3V3 world, robot xacro, FAST-LIO, Livox sim, and IMU filter. |
@@ -21,12 +21,29 @@ This document summarizes the workspace structure after the height-gated traversa
 
 | File | Purpose | Keep? |
 |------|---------|-------|
-| `docs/height_gated_traversability_plan.md` | Main design log and decision record for perception, planning, MINCO, and control. | Keep. |
+| `docs/index.md` | Main documentation router. | Keep. |
+| `docs/current/project_state.md` | Current-truth state board for active chain, bottlenecks, assumptions, and entrypoints. | Keep. |
+| `docs/current/architecture.md` | Current architecture overview matching workflow structure. | Keep. |
+| `docs/current/active_pipeline.md` | Current active pipeline only. | Keep. |
+| `docs/current/dataflow_and_frames.md` | Current dataflow and frame contract. | Keep. |
+| `docs/current/agent_bootstrap.md` | Agent routing surface. | Keep. |
+| `docs/current/active_legacy.md` | Central active/legacy map. | Keep. |
+| `docs/modules/` | Fixed-format module cards for active pipeline components. | Keep. |
+| `docs/reference/interfaces.md` | Topic/frame/message contract reference. | Keep. |
+| `docs/reference/parameters.md` | High-risk parameter reference and source-of-truth notes. | Keep. |
+| `docs/architecture/runtime_flows.md` | Runtime stages and dataflow. | Keep. |
 | `docs/runbooks/bringup.md` | Short start/stop/build/health-check commands for the current simulation chain. | Keep; replaces the older `ops_reference.md`. |
 | `docs/runbooks/debug_planning.md` | Operational guide for JPS/MINCO/fallback/wall-risk debugging. | Keep. |
 | `docs/runbooks/debug_control.md` | Operational guide for overshoot/speed/chassis response debugging. | Keep. |
-| `docs/validation/planning_validation.md` | Pass/fail checks for planning changes. | Keep. |
-| `docs/validation/control_validation.md` | Pass/fail checks for control changes. | Keep. |
+| `docs/testbook/localization_validation.md` | Pass/fail checks for FAST-LIO2 and relocalization. | Keep. |
+| `docs/testbook/mapping_validation.md` | Pass/fail checks for traversability and ESDF. | Keep. |
+| `docs/testbook/planning_validation.md` | Pass/fail checks for planning changes. | Keep. |
+| `docs/testbook/control_validation.md` | Pass/fail checks for control changes. | Keep. |
+| `docs/testbook/system_validation.md` | End-to-end validation checklist. | Keep. |
+| `docs/evidence/` | Evidence packet templates and future run records. | Keep; do not backfill guessed runs. |
+| `docs/history/` | Timeline, indexes, bug template, and decision records. | Keep; only add confirmed history. |
+| `docs/archive/` | Deprecated implementation notes. | Keep; records removed or deprecated files. |
+| `docs/height_gated_traversability_plan.md` | Long historical work log for perception, planning, MINCO, and control. | Keep; not the first source for current runtime truth. |
 | `docs/file_inventory.md` | This inventory. | Keep. |
 | `SIM_WORKFLOW.md` | Earlier simulation workflow notes. | Deleted after replacement by `runbooks/bringup.md` and current docs. |
 | `notes/progress.md` | Older progress notes mentioning ROG/pure-pursuit tests. | Deleted. |
@@ -66,10 +83,15 @@ Current `sim_planner.launch.py` planning parameters of interest:
 | File | Runtime Role | Notes |
 |------|--------------|-------|
 | `sentry_controller/traj_tracker.py` | Current main controller. Tracks `/planner/traj_samples`, uses real `control_dt`, publishes `/cmd_vel_chassis`. | Active in `sim_planner.launch.py`. |
-| `sentry_controller/path_tracker.py` | Previous geometric/Frenet/path tracker baseline. | Not launched by current stage3; useful for regression comparison. |
-| `sentry_controller/goal_controller.py` | Early goal-to-point controller. | Not launched by current stage3; useful as simple fallback/test tool. |
 | `sentry_controller/keyboard_teleop.py` | Manual velocity command tool. | Useful for smoke testing Gazebo drive path. |
-| `setup.py` | Console-script registration. | Still registers all controller tools/baselines. |
+| `setup.py` | Console-script registration. | Registers only `traj_tracker` and `keyboard_teleop`. |
+
+Removed old controller files:
+
+- `sentry_controller/path_tracker.py`
+- `sentry_controller/goal_controller.py`
+- `sentry_controller/pure_pursuit.py`
+- `sentry_controller/traj_publisher.py`
 
 Current `traj_tracker` parameters of interest:
 
@@ -80,6 +102,45 @@ Current `traj_tracker` parameters of interest:
 | `max_feedback_speed` | `2.0` | Cap on feedback correction velocity. |
 | `offtrack_v_max` | `2.0` | Speed cap when tracking error is large. |
 | `debug_csv_path` | `/tmp/traj_tracker_debug.csv` | Per-cycle tracking diagnostics. |
+
+## Mapping Package: `src/sentry_mapping`
+
+| File | Runtime Role | Notes |
+|------|--------------|-------|
+| `src/traversability_mapper_node.cpp` | Current height-gated 2.5D mapper. Publishes `/perception/costmap_2d`. | Active in `sim_perception.launch.py`. |
+| `CMakeLists.txt` | Builds and installs `traversability_mapper`. | No optional ROG target remains. |
+| `package.xml` | ROS package metadata and dependencies. | Depends only on the current mapper stack dependencies. |
+
+Removed old ROG mapping files:
+
+- `src/perception_mapper_node.cpp`
+- `config/rog_map_sentry.yaml`
+- `launch/mapping.launch.py`
+- `launch/replay_mapping.launch.py`
+- `rviz/mapping.rviz`
+
+The old ROG runtime path is documented only as history/archive context. Current mapping is handled by `traversability_mapper_node.cpp`.
+
+## Perception Package: `src/sentry_perception`
+
+| File | Runtime Role | Notes |
+|------|--------------|-------|
+| `sentry_perception/relocalization_node.py` | Publishes `map -> lidar_odom` and `/relocalization/status`. | Active in `sim_perception.launch.py`. |
+| `sentry_perception/esdf2d_node.py` | Converts `/perception/costmap_2d` into `/perception/esdf_2d`. | Active in `sim_perception.launch.py`. |
+| `setup.py` | Console-script registration. | Registers only `relocalization` and `esdf2d`. |
+
+Removed old perception files:
+
+- `sentry_perception/obstacle_detector_node.py`
+- `sentry_perception/cluster_detector_node.py`
+- `launch/perception.launch.py`
+- `launch/replay_perception.launch.py`
+- `config/obstacle_detector.yaml`
+- `config/cluster_detector.yaml`
+- `rviz/perception.rviz`
+- `README.md`
+
+The removed obstacle/cluster pipeline was not part of the current simulation chain. Current mapping is handled by `sentry_mapping/traversability_mapper_node.cpp`, with relocalization and ESDF support from `sentry_perception`.
 
 ## Modified Simulation Integration Points
 
@@ -97,11 +158,7 @@ Current `traj_tracker` parameters of interest:
 | `src/pb_rm_simulation/src/rm_simulation/pb_rm_simulation/world/RM3V3/rm3v3_sym_v1.world` | Runtime RM3V3 simulation world. | Keep; resolved through `pb_rm_simulation` package share. |
 | `src/pb_rm_simulation/src/rm_simulation/livox_laser_simulation_RO2/scan_mode/mid360.csv` | Livox MID360 scan pattern. | Keep; required by the Gazebo Livox plugin. |
 | `data/bags/` | Optional local rosbag recordings. | Directory is absent by default and ignored by `.gitignore`; track deliberately only if needed. |
-| `scripts/diag_costmap.py` | Detailed costmap diagnostics. | Keep or move to `tools/diagnostics/`. |
-| `scripts/diag_costmap_quick.py` | Quick costmap diagnostics. | Keep or move to `tools/diagnostics/`. |
-| `scripts/diag_density.py` | Point density diagnostics. | Keep or move to `tools/diagnostics/`. |
-| `scripts/diag_hits.py` | Hit-count diagnostics. | Keep or move to `tools/diagnostics/`. |
-| `scripts/diag_zhist.py` | Height histogram diagnostics. | Keep or move to `tools/diagnostics/`. |
+| `scripts/` | Optional local ad-hoc scripts directory. | Keep directory; currently empty after removing obsolete one-off diagnostics. |
 
 ## Entry Dependency Audit
 
@@ -124,14 +181,12 @@ These remain in `setup.py` console scripts but are not used by current `sim_plan
 
 | Executable | File | Recommendation |
 |------------|------|----------------|
-| `path_tracker` | `sentry_controller/path_tracker.py` | Keep as baseline/regression tool. |
-| `goal_controller` | `sentry_controller/goal_controller.py` | Keep as simple fallback for now. |
 | `keyboard_teleop` | `sentry_controller/keyboard_teleop.py` | Keep for manual smoke tests. |
 | `esdf_grad_viz` | `sentry_planner/esdf_grad_viz.py` | Keep for ESDF/MINCO clearance tuning. |
 
 ### Stale Documentation References
 
-`docs/runbooks/bringup.md` is the current concise start/stop reference. Historical sections in `height_gated_traversability_plan.md` may still mention `path_tracker` or `pure_pursuit` as past-stage baselines.
+`docs/runbooks/bringup.md` is the current concise start/stop reference. Historical sections in `height_gated_traversability_plan.md` may still mention removed controller implementations as past-stage baselines.
 
 ## Cleanup Recommendations
 
@@ -151,7 +206,5 @@ Archive candidates, not immediate deletion:
 
 Do not delete yet:
 
-- `path_tracker.py` because it is a useful baseline against `traj_tracker`.
-- `goal_controller.py` because it is a simple fallback/debug controller.
 - `esdf_grad_viz.py` because MINCO clearance tuning is still active.
 - either modified xacro, because both can be reached by different simulation launches.

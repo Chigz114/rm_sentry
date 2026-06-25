@@ -5,7 +5,7 @@
          第 3 层投影得到的 2D 占据图，cell ∈ {100=occ, 0=free, -1=unknown}
 输出：/perception/esdf_2d     (sensor_msgs/PointCloud2 with intensity)
          每个 cell 一个点，intensity = 2D 欧氏距离到最近障碍 + 10.0 (m)
-         （+10 偏移和第 2 层 ROG/ESDF 的 intensity 语义保持一致，方便 RViz 共用色方案）
+         （+10 偏移沿用历史 ESDF 可视化色标，方便 RViz 共用色方案）
 
 算法：scipy.ndimage.distance_transform_edt（Felzenszwalb 线性 2D 距离变换）
       对 100×100 网格，耗时 < 1 ms。
@@ -16,10 +16,10 @@
   - treat_unknown_as_obstacle=True：unknown 也当 occupied，距离被截断
     适合：保守规划，不穿越未知区
 
-和第 2 层 ROG/ESDF 的区别：
-  - 第 2 层：3D 欧氏距离在整个空间算，可视化时切 z=robot_z 一层 —— 本质是 3D 数据
-  - 第 4 层（本节点）：2D 欧氏距离在 xy 平面算 —— 本质就是 2D 数据
-  - 规划器需要的是 2D 数据（机器人平面运动），所以第 4 层才是规划器真正用的 ESDF
+和旧 3D ESDF 方案的区别：
+  - 旧方案：3D 欧氏距离在整个空间算，可视化时切 z=robot_z 一层 —— 本质是 3D 数据
+  - 本节点：2D 欧氏距离在 xy 平面算 —— 本质就是 2D 数据
+  - 规划器需要的是 2D 数据（机器人平面运动），所以本节点才是规划器真正用的 ESDF
 """
 import numpy as np
 import rclpy
@@ -120,7 +120,7 @@ class ESDF2DNode(Node):
         y_world = (origin_y + (ys + 0.5) * res).astype(np.float32)
         z_world = np.zeros_like(x_world, dtype=np.float32)
 
-        # intensity = dist + 10.0，和 ROG/ESDF 的约定对齐
+        # intensity = dist + 10.0，沿用历史 ESDF 可视化约定
         intensity = (dist_m + 10.0).astype(np.float32)
 
         # (N, 4) 打平

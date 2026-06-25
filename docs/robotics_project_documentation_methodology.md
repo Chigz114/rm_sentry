@@ -47,7 +47,7 @@ Good files:
 
 - `docs/reference/interfaces.md`
 - `docs/reference/parameters.md`
-- `docs/reference/active_legacy.md`
+- `docs/current/active_legacy.md`
 - generated API/interface pages if available
 
 Rules:
@@ -79,17 +79,17 @@ Rules:
 - Say what not to adjust first when a common failure appears.
 - End each runbook with a validation criterion.
 
-### 4. Validation Layer
+### 4. Testbook Layer
 
 Purpose: define how to decide whether a module is currently correct.
 
-Robotics systems often look plausible in RViz while frames, timestamps, QoS, update rates, or controller saturation are wrong. Validation docs should define minimum checks that convert "looks okay" into "known good enough for this project".
+Robotics systems often look plausible in RViz while frames, timestamps, QoS, update rates, or controller saturation are wrong. Testbook docs should define minimum checks that convert "looks okay" into "known good enough for this project".
 
 Good files:
 
-- `docs/validation/mapping_validation.md`
-- `docs/validation/planning_validation.md`
-- `docs/validation/control_validation.md`
+- `docs/testbook/mapping_validation.md`
+- `docs/testbook/planning_validation.md`
+- `docs/testbook/control_validation.md`
 
 Rules:
 
@@ -106,8 +106,8 @@ Decision docs should not be long work reports. They should capture durable choic
 
 Good files:
 
-- `docs/decisions/navigation_decisions.md`
-- `docs/decisions/failed_attempts.md`
+- `docs/history/decisions/navigation_decisions.md`
+- `docs/history/decisions/failed_attempts.md`
 - ADR-style files for major choices
 
 Rules:
@@ -134,7 +134,7 @@ It should be short, concrete, and boundary-setting. A useful bootstrap is a map 
 
 Good file:
 
-- `docs/agent_bootstrap.md`
+- `docs/current/agent_bootstrap.md`
 
 ## Source-Of-Truth Rules
 
@@ -159,16 +159,23 @@ For a robotics repository that is changing quickly, start with this:
 ```text
 docs/
   index.md
-  agent_bootstrap.md
+  current/
+    project_state.md
+    agent_bootstrap.md
+    active_legacy.md
 
   architecture/
     overview.md
     runtime_flows.md
 
+  modules/
+    README.md
+    module_card_template.md
+    module_name.md
+
   reference/
     interfaces.md
     parameters.md
-    active_legacy.md
 
   runbooks/
     bringup.md
@@ -177,14 +184,26 @@ docs/
     debug_control.md
     tuning.md
 
-  validation/
+  testbook/
+    localization_validation.md
     mapping_validation.md
     planning_validation.md
     control_validation.md
+    system_validation.md
 
-  decisions/
-    navigation_decisions.md
-    failed_attempts.md
+  history/
+    timeline.md
+    index_by_module.md
+    index_by_symptom.md
+    decisions/
+      ADR-template.md
+      navigation_decisions.md
+    bugs/
+      BUG-template.md
+
+  evidence/
+    runs_index.md
+    templates/
 ```
 
 Do not create every file at once unless there is content worth maintaining. A small set of accurate routing documents is better than a large stale documentation tree.
@@ -220,4 +239,3 @@ Use three steps:
 3. Add validation docs and automate what can be generated.
 
 The end goal is not more Markdown. The goal is a durable, searchable, versioned project knowledge system where humans and agents can quickly find the right local truth.
-

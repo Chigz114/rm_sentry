@@ -18,7 +18,7 @@ This document records the current high-value topic, frame, and message contracts
 | `/planner/costmap_inflated` | `nav_msgs/OccupancyGrid` | costmap_inflator | jps_node | JPS binary grid |
 | `/planner/path` | `nav_msgs/Path` | jps_node | minco_planner_node, RViz | JPS waypoint path |
 | `/planner/jps_viz` | `visualization_msgs/MarkerArray` | jps_node | RViz | JPS markers |
-| `/planner/path_vis` | `nav_msgs/Path` | minco_planner_node | RViz, old path_tracker if manually used | dense MINCO visualization |
+| `/planner/path_vis` | `nav_msgs/Path` | minco_planner_node | RViz | dense MINCO visualization |
 | `/planner/traj_samples` | `std_msgs/Float64MultiArray` | minco_planner_node | traj_tracker | current control-facing trajectory |
 | `/planner/minco_traj` | `visualization_msgs/MarkerArray` | minco_planner_node | RViz | MINCO markers |
 | `/planner/minco_info` | `visualization_msgs/Marker` | minco_planner_node | RViz | MINCO text/debug marker |
@@ -97,4 +97,3 @@ ros2 topic info /planner/traj_samples -v
 ros2 topic echo /relocalization/status --once
 ros2 run tf2_tools view_frames
 ```
-
