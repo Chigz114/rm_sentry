@@ -1,79 +1,70 @@
-# Agent Bootstrap
+# AGENTS.md
 
-This workspace is the active RoboMaster sentry simulation workspace.
+本文件只定义 coding agent 在 `rm_sentry_sim_ws` 中工作的规则。它不是系统架构、运行时 pipeline 或当前任务的真理来源。
 
-## First Reads
+当前系统事实看 `docs/current/system_overview.md`。当前任务和推进状态看 `docs/current/plan.md`。启动、停止和健康检查命令看 `docs/current/bringup.md`。
 
-Read these before changing behavior:
+## 必读顺序
 
-```text
-docs/index.md
-docs/current/project_state.md
-docs/current/agent_bootstrap.md
-docs/current/architecture.md
-docs/current/active_pipeline.md
-docs/current/dataflow_and_frames.md
-docs/architecture/runtime_flows.md
-docs/modules/README.md
-docs/reference/interfaces.md
-docs/reference/parameters.md
-docs/current/active_legacy.md
-docs/archive/deprecated_implementations.md
-```
+在做非平凡修改前先读：
 
-For operation/debugging:
+1. `docs/current/system_overview.md`
+2. `docs/current/plan.md`
+3. 如果任务涉及启动、停止、验证或日志，读 `docs/current/bringup.md`
+4. 与任务相关的 `docs/modules/*.md` 或 `docs/decisions/*.md`
 
-```text
-docs/runbooks/bringup.md
-docs/runbooks/debug_planning.md
-docs/runbooks/debug_control.md
-docs/testbook/localization_validation.md
-docs/testbook/mapping_validation.md
-docs/testbook/planning_validation.md
-docs/testbook/control_validation.md
-docs/testbook/system_validation.md
-```
+不要从旧 launch、旧 package 名、已删除代码路径或历史文档中推断当前 active pipeline。
 
-## Active Runtime
+## 修改前规则
 
-The active simulation path is:
+- 先确认目标文件属于当前 active pipeline，或任务明确要求处理 deprecated path。
+- 先确认行为由代码默认值、launch 覆盖、yaml、运行时参数还是仿真插件控制。
+- 对 bug 不要直接 patch；先列出 hypothesis 和最小验证方法。
+- 不要一次跨多个核心模块大改，除非任务明确要求迁移或重构。
+- 不要引入机器相关绝对路径到 launch、config 或源码中。
+- 不要依赖 `build/`、`install/`、`log/`、rosbag、debug CSV 或 frame graph 这类生成物。
 
-```text
-pb_rm_simulation/Gazebo + rm_nav_bringup FAST-LIO2
--> /cloud_registered + /Odometry
--> sentry_mapping/traversability_mapper
--> sentry_perception/esdf2d
--> sentry_planner/sim_planner
--> sentry_controller/traj_tracker
--> /cmd_vel_chassis
-```
+## Deprecated Path 规则
 
-Old controller paths such as `pure_pursuit`, `path_tracker`, `goal_controller`, and fixed `traj_publisher` have been removed from this workspace. Old ROG-Map based mapping files have also been removed from `sim_ws`; use `docs/archive/` and `docs/history/` only as reconstruction context.
+旧 Nav2 upstream、ROG-Map runtime、`pure_pursuit`、`path_tracker`、`goal_controller`、固定 `traj_publisher` 等路径不得作为新工作的默认基础。
 
-## Repository Boundaries
+如果旧路径看起来相关，先查：
 
-- `src/pb_rm_simulation` is a lightweight local vendor subset derived from the Polar Bear RoboMaster simulation stack. It is not an embedded Git repo in this checkout.
-- `src/sentry_mapping` and `src/sentry_perception` are local packages in this workspace, not symlinks.
-- `rm_sentry_real_ws` is legacy/reference. Do not delete or mutate it while working in this workspace unless the user explicitly asks.
+- `docs/current/system_overview.md`
+- `docs/decisions/*.md`
+- 运行时 launch 和当前源码
 
-## Edit Rules
+只有在用户明确要求历史重建、比较或恢复时，才修改 deprecated path。
 
-- Do not commit or rely on `build/`, `install/`, `log/`, rosbag outputs, debug CSV files, or generated frame graphs.
-- Do not introduce machine-specific absolute paths in launch/config/source files.
-- Runtime assets required by launch files should live in ROS package share directories so `get_package_share_directory` or `FindPackageShare` can resolve them.
-- Prefer small, validated changes. After code/config changes, run at least a targeted `colcon build --symlink-install --packages-select ...` and search for newly introduced absolute paths.
+## 验证要求
 
-## Common Commands
+不能只说 build pass 或 RViz 看起来正常。非平凡修改至少说明一种验证：
 
-```bash
-source /opt/ros/humble/setup.bash
-colcon build --symlink-install --packages-select \
-  livox_ros_driver2 ros2_livox_simulation imu_complementary_filter fast_lio \
-  pb_rm_simulation rm_nav_bringup \
-  sentry_mapping sentry_perception sentry_planner sentry_controller
-source install/setup.bash
-```
+- targeted build 结果；
+- launch 结果；
+- topic / frame / QoS 检查；
+- 日志或指标；
+- module local checks；
+- 明确说明未验证及原因。
 
-```bash
-rg -n --hidden -S "/home/|/Users/" . --glob '!build/**' --glob '!install/**' --glob '!docs/**'
-```
+如果改动影响 ROS 代码、launch 或参数，优先运行对应 package 的 targeted `colcon build --symlink-install --packages-select ...`。纯 Markdown 迁移不需要 build。
+
+## 输出格式
+
+非平凡修改后必须报告：
+
+- changed files；
+- changed logic；
+- changed parameters；
+- affected topics / frames / modules；
+- verification performed；
+- remaining uncertainty；
+- docs that should be updated。
+
+## 文档更新规则
+
+- 运行时拓扑、active module、核心 topic/frame 改变时，更新 `docs/current/system_overview.md`。
+- 当前任务、完成项、暂停项或废弃项改变时，更新 `docs/current/plan.md`。
+- 启动、停止、日志、健康检查流程改变时，更新 `docs/current/bringup.md`。
+- 模块接口、参数计算含义或内部机制改变时，更新对应 `docs/modules/*.md`。
+- 架构、方案或长期维护取舍改变时，新增或更新 `docs/decisions/*.md`。

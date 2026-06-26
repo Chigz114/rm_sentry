@@ -1,78 +1,71 @@
-# FAST-LIO2 Sim State Estimation
+# FAST-LIO2
 
-## Purpose
+## Code map
 
-Produce registered point clouds and LIO odometry from the simulated MID360/Livox-style lidar and IMU topics.
-
-## Runtime Status
-
-Active in Stage 1.
-
-## Inputs
-
-| Input | Type | Frame | Rate | Source | Notes |
-|---|---|---|---|---|---|
-| `/livox/lidar` | Livox-style lidar message | Livox frames | sim-dependent | simulated Livox driver stack | configured by FAST-LIO yaml |
-| `/imu/data` | IMU | IMU frame | sim-dependent | IMU filter path | remapped from `/livox/imu` through complementary filter |
-
-## Outputs
-
-| Output | Type | Frame | Rate | Consumer | Notes |
-|---|---|---|---|---|---|
-| `/cloud_registered` | `sensor_msgs/PointCloud2` | LIO/global output frame | lidar/update-dependent | relocalization, traversability | dense publish is enabled |
-| `/Odometry` | `nav_msgs/Odometry` | LIO odom | LIO/update-dependent | traversability | not the current Stage 3 pose source |
-| `/odom` static relation to `lidar_odom` | TF | `odom -> lidar_odom` | static | TF tree | provided by Stage 1 launch compatibility path |
-
-## Internal Mechanism
-
-The active launch starts Gazebo, the simulated MID360 path, an IMU complementary filter, and `fast_lio/fastlio_mapping`. FAST-LIO consumes the Livox lidar and filtered IMU topics using the sim yaml configuration, then publishes registered cloud and odometry outputs.
-
-## State
-
-FAST-LIO maintains its own incremental state estimation and map state internally. This card records only the ROS contract used by the rest of the workspace.
-
-## Key Parameters
-
-| Parameter | Current Value | Source | Effect When Increased | Effect When Decreased |
-|---|---:|---|---|---|
-| `preprocess.blind` | `0.5` | `fastlio_mid360_sim.yaml` | filters more near-field points | includes closer points, may add near-field noise |
-| `mapping.fov_degree` | `360.0` | `fastlio_mid360_sim.yaml` | wider accepted field | narrower accepted field |
-| `mapping.det_range` | `100.0` | `fastlio_mid360_sim.yaml` | farther accepted points | shorter range |
-| `mapping.extrinsic_est_en` | `false` | `fastlio_mid360_sim.yaml` | online extrinsic if enabled | fixed sim extrinsic |
-| `publish.dense_publish_en` | `true` | `fastlio_mid360_sim.yaml` | required dense cloud for traversability | sparse output may break mapping quality |
-
-## Failure Signatures
-
-| Symptom | Likely Meaning | First Check |
+| Part | Location | Role |
 |---|---|---|
-| no `/cloud_registered` | FAST-LIO or input topic not running | `ros2 topic hz /livox/lidar` and `/imu/data` |
-| traversability has no updates | cloud missing or too sparse | `ros2 topic hz /cloud_registered` |
-| costmap appears shifted due to LIO drift | Stage 2 alignment issue or LIO sim drift | `/relocalization/status`, TF tree |
+| Stage 1 launch | `src/pb_rm_simulation/src/rm_nav_bringup/launch/bringup_sim.launch.py` | 启动 Gazebo、IMU 滤波和 `fast_lio/fastlio_mapping` |
+| FAST-LIO config | `src/pb_rm_simulation/src/rm_nav_bringup/config/simulation/fastlio_mid360_sim.yaml` | 设置 lidar/IMU topic、Livox 模式和 dense publish |
+| Robot xacro | `src/pb_rm_simulation/src/rm_nav_bringup/urdf/sentry_robot_sim.xacro` | 定义 MID360/IMU 与底盘仿真 |
 
-## Code Map
+## Module role
 
-| Role | File or Function |
-|---|---|
-| Stage 1 launch | `src/pb_rm_simulation/src/rm_nav_bringup/launch/bringup_sim.launch.py` |
-| FAST-LIO sim parameters | `src/pb_rm_simulation/src/rm_nav_bringup/config/simulation/fastlio_mid360_sim.yaml` |
-| robot/LiDAR extrinsic source | `src/pb_rm_simulation/src/rm_nav_bringup/config/simulation/measurement_params_sim.yaml` |
+FAST-LIO2 是 Stage 1 的状态估计和点云配准模块。它把仿真 MID360 lidar 和 IMU 转为 `/cloud_registered` 与 `/Odometry`，供 Stage 2 重定位和可通行性建图使用。
 
-## Validation Hooks
+当前 Stage 3 不直接使用 FAST-LIO odometry；规划和控制使用 Gazebo `/odom`。
 
-Use `docs/testbook/localization_validation.md` and `docs/runbooks/bringup.md`.
+## Interface contract
 
-Quick checks:
+Input:
+
+- `/livox/lidar`：Gazebo Livox 插件输出。
+- `/livox/imu` 经 `imu_complementary_filter` remap 为 `/imu/data` 后供 FAST-LIO 使用。
+
+Output:
+
+- `/cloud_registered`：`sensor_msgs/PointCloud2`，配准点云，Stage 2 直接消费。
+- `/Odometry`：`nav_msgs/Odometry`，FAST-LIO odometry，`traversability_mapper` 使用。
+- `/odom`：Gazebo/chassis odometry，不是 FAST-LIO 输出，但由同一 Stage 1 仿真启动链提供给 Stage 3。
+
+## Internal mechanism
+
+`bringup_sim.launch.py` 先 include `rm_simulation.launch.py` 启动 Gazebo 世界和机器人，再启动 `imu_complementary_filter`，最后在 `lio:=fastlio` 条件下启动 `fastlio_mapping`。
+
+FAST-LIO 使用 yaml 中的 Livox/MID360 配置融合 lidar 和 IMU，发布稠密配准点云。Stage 2 假设 `/cloud_registered` 足够稠密，能支撑 height-gated map 的单帧 z 统计和命中更新。
+
+## Parameters in computation
+
+| Parameter | Meaning in code/config | Effect |
+|---|---|---|
+| `common.lid_topic` | FAST-LIO lidar 输入 topic，当前为 `/livox/lidar` | 配错会导致无点云输入 |
+| `common.imu_topic` | FAST-LIO IMU 输入 topic，当前为 `/imu/data` | 配错会导致 LIO 初始化/融合失败 |
+| `preprocess.lidar_type` | Livox 类型配置，当前为 `1` | 影响点云预处理方式 |
+| `preprocess.blind` | 近场盲区距离 | 过大可能丢近场障碍，过小可能引入近场噪声 |
+| `publish.dense_publish_en` | 是否发布稠密点云，当前为 `true` | 关闭会削弱 traversability map 输入 |
+
+## Coupling
+
+Upstream:
+Gazebo lidar/IMU topic、xacro 外参和 IMU filter 输出必须与 FAST-LIO yaml 对齐。
+
+Downstream:
+`relocalization_node` 和 `traversability_mapper` 都依赖 `/cloud_registered`。`traversability_mapper` 还消费 `/Odometry`。
+
+## Important implementation details
+
+- `bringup_sim.launch.py` 中 `nav_rviz` 和 `mode` 是兼容参数；当前轻量 Stage 1 不启动 Nav2。
+- Stage 3 使用 `/odom` 是有意设计，不应把 FAST-LIO 漂移直接当成控制器问题。
+
+## Local checks
 
 ```bash
+ros2 topic hz /livox/lidar
+ros2 topic hz /imu/data
 ros2 topic hz /cloud_registered
 ros2 topic hz /Odometry
-ros2 topic info /cloud_registered -v
 ```
 
-## Ownership Notes
+## Personal understanding / open questions
 
-Add human-authored recall notes later.
-
-## Open Questions
-
-- The real-robot migration contract for replacing sim `/odom` with a real pose source is not finalized in this workspace.
+- FAST-LIO 在当前仿真中的漂移是否只影响 Stage 2 建图，而不会直接污染 Stage 3 控制？
+- `dense_publish_en` 对可通行性图的点密度影响是否需要量化？

@@ -1,90 +1,96 @@
 # MINCO
 
-## Purpose
+## Code map
 
-Convert the JPS waypoint path into a smoother timed trajectory with soft clearance, soft reference, dynamic penalties, and bounded waypoint movement.
-
-## Runtime Status
-
-Active in Stage 3.
-
-## Inputs
-
-| Input | Type | Frame | Rate | Source | Notes |
-|---|---|---|---|---|---|
-| `/planner/path` | `nav_msgs/Path` | planning frame | goal-triggered | `jps_node` | topology/reference path |
-| `/perception/costmap_2d` | `nav_msgs/OccupancyGrid` | `map` | mapper-dependent | traversability_mapper | distance/collision source |
-| `/odom` | `nav_msgs/Odometry` | sim odom | odom-dependent | Gazebo/chassis | current pose source |
-
-## Outputs
-
-| Output | Type | Frame | Rate | Consumer | Notes |
-|---|---|---|---|---|---|
-| `/planner/traj_samples` | `std_msgs/Float64MultiArray` | planning frame data | on plan | `traj_tracker` | rows `[t,x,y,vx,vy,ax,ay,yaw]` |
-| `/planner/path_vis` | `nav_msgs/Path` | planning frame | on plan | RViz | dense path visualization |
-| `/planner/minco_traj` | `visualization_msgs/MarkerArray` | planning frame | on plan | RViz | trajectory markers |
-| `/planner/minco_info` | `visualization_msgs/Marker` | planning frame | on plan | RViz | info/debug marker |
-
-## Internal Mechanism
-
-The planner post-processes JPS waypoints, allocates segment durations, solves a 2D MINCO-style polynomial trajectory optimization, evaluates collision/dynamic constraints, publishes timed samples, and falls back when final checks fail.
-
-## State
-
-- Latest path, odometry, and costmap.
-- Internal occupancy-derived distance representation.
-- Optimizer configuration and last planned trajectory.
-
-## Key Parameters
-
-| Parameter | Current Value | Source | Effect When Increased | Effect When Decreased |
-|---|---:|---|---|---|
-| `v_max` | `6.0` | `sim_planner.launch.py` | permits faster trajectory | caps trajectory speed lower |
-| `a_max` | `16.0` | `sim_planner.launch.py` | permits sharper acceleration | more conservative feasibility |
-| `v_alloc` | `3.0` | `sim_planner.launch.py` | shorter initial durations | longer initial durations |
-| `w_time` | `100.0` | `sim_planner.launch.py` | more time reduction pressure | smoother/slower tendency |
-| `w_obs` | `3000.0` | `sim_planner.launch.py` | stronger soft clearance | weaker soft clearance |
-| `w_collision` | `10000.0` | `sim_planner.launch.py` | stronger hard-clearance avoidance | weaker hard-clearance avoidance |
-| `d_soft` | `0.50` | `sim_planner.launch.py` | clearance cost starts farther out | clearance cost starts closer |
-| `d_hard` | `0.25` | `sim_planner.launch.py` | stricter final clearance | less strict final clearance |
-| `w_ref` | `20.0` | `sim_planner.launch.py` | stays closer to JPS waypoints | allows more waypoint movement |
-| `waypoint_bound_m` | `1.00` | `sim_planner.launch.py` | more local movement possible | less local movement possible |
-| `t_min` | `1.0` | `sim_planner.launch.py` | longer minimum segments | faster but riskier segments |
-
-## Failure Signatures
-
-| Symptom | Likely Meaning | First Check |
+| Part | Location | Role |
 |---|---|---|
-| `MINCO final check FAILED` | clearance/dynamic check failed | `/tmp/planner.log` |
-| fallback path looks polyline-like | optimizer output rejected or fallback active | grep fallback/final check |
-| high `a_viol` | timing too aggressive or constraints mismatched | `max_a`, `a_viol`, `t_min` |
-| wall risk at 90 degree corner | clearance/reference/bound balance insufficient or tracker error margin too large | `min_d`, `wp_shift`, control validation |
+| Launch source | `src/sentry_planner/launch/sim_planner.launch.py` | 启动 `minco_planner_node` 并覆盖运行时参数 |
+| ROS node | `src/sentry_planner/sentry_planner/minco_planner_node.py` | 接收 JPS path，发布轨迹和 marker |
+| Solver | `src/sentry_planner/sentry_planner/minco_solver_2d.py` | 生成多项式、计算代价、优化路点 |
+| ESDF helper | `src/sentry_planner/sentry_planner/esdf_map_2d.py` | 从 raw costmap 构建 signed ESDF |
+| Path postprocess | `src/sentry_planner/sentry_planner/path_postprocess.py` | 修剪 JPS path、控制路点间距、分配初始时长 |
 
-## Code Map
+## Module role
 
-| Role | File or Function |
-|---|---|
-| Stage 3 launch | `src/sentry_planner/launch/sim_planner.launch.py` |
-| ROS wrapper | `src/sentry_planner/sentry_planner/minco_planner_node.py` |
-| Solver | `src/sentry_planner/sentry_planner/minco_solver_2d.py` |
-| Path post-processing | `src/sentry_planner/sentry_planner/path_postprocess.py` |
-| Internal distance helper | `src/sentry_planner/sentry_planner/esdf_map_2d.py` |
+MINCO 模块把 `/planner/path` 的离散 JPS 路点转为时间参数化轨迹 `/planner/traj_samples`。它负责平滑、间距代价、动力学约束检查和供控制器跟踪的采样格式。
 
-## Validation Hooks
+## Interface contract
 
-Use `docs/testbook/planning_validation.md` and `docs/runbooks/debug_planning.md`.
+Input:
 
-Quick checks:
+- `/planner/path`：`nav_msgs/Path`，JPS 输出路径。
+- `/perception/costmap_2d`：`nav_msgs/OccupancyGrid`，用于内部 `EsdfMap2D`。
+- `/odom`：`nav_msgs/Odometry`，当前 Stage 3 仿真位姿源。
 
-```bash
-grep -E "MINCO|final check|fallback|min_d|wp_shift|T=|max_v|max_a|a_viol" /tmp/planner.log 2>/dev/null | tail -n 120
-ros2 topic echo /planner/traj_samples --once
+Output:
+
+- `/planner/path_vis`：`nav_msgs/Path`，稠密轨迹可视化。
+- `/planner/traj_samples`：`std_msgs/Float64MultiArray`，控制器输入。
+- `/planner/minco_traj`：`visualization_msgs/MarkerArray`。
+- `/planner/minco_info`：`visualization_msgs/Marker`。
+
+`/planner/traj_samples` 每行格式：
+
+```text
+[t, x, y, vx, vy, ax, ay, yaw]
 ```
 
-## Ownership Notes
+## Internal mechanism
 
-Add human-authored recall notes later.
+1. `on_costmap()` 用 raw costmap 更新内部 signed `EsdfMap2D`。
+2. `on_odom()` 缓存当前速度和 frame。
+3. `on_path()` 收到 JPS path 后提取 `(x, y)` 路点。
+4. `postprocess_jps_path()` 做 line-of-sight prune、路点 spacing control，并按 `v_alloc/t_min` 分配初始段时长。
+5. 节点从当前 odom 设置起点速度边界，并把 ESDF 传给 `MincoSolver2D`。
+6. solver 用 L-BFGS 优化中间路点位置；durations 当前固定。
+7. 代价包含 jerk smoothness、time pressure、ESDF clearance、dynamics penalty 和 JPS soft reference。
+8. `check_clearance()` 如果发现 `min_d < d_hard`，会 fallback 到未优化 JPS 路点。
+9. `check_dynamics()` 统计 `max_v/max_a` 和违规数量。
+10. `sample_trajectory()` 以 `sample_dt` 采样并发布 `/planner/traj_samples`。
 
-## Open Questions
+## Parameters in computation
 
-- Future speed work should be based on evidence; do not reapply `t_min=0.5` as a blind speed fix.
+| Parameter | Meaning in code | Effect |
+|---|---|---|
+| `v_max` | solver 速度软限制 | 与 tracker/Gazebo 能力不一致会导致跟踪困难 |
+| `a_max` | solver 加速度软限制 | 过高会生成底盘难以执行的轨迹 |
+| `v_alloc` | 初始时长分配速度 | 越大初始时长越短 |
+| `w_smooth` | jerk 平滑代价权重 | 越大越偏向平滑 |
+| `w_time` | 总时长代价权重 | 越大越压缩时间，可能提高动态压力 |
+| `w_obs`, `w_collision` | ESDF 软/硬间距代价 | 控制远离障碍的强度 |
+| `d_soft`, `d_hard` | 优选间距和硬检查阈值 | `d_hard` 直接参与 final check |
+| `w_ref` | 对原始 JPS 路点的软参考 | 太小可能偏离拓扑，太大可能贴墙 |
+| `waypoint_bound_m` | 中间路点优化边界 | 限制路点从 JPS 初值移动的范围 |
+| `w_dyn` | 动力学限制惩罚 | 控制速度/加速度违规压力 |
+| `min_spacing`, `max_spacing` | 路点后处理间距 | 影响段数、时长和轨迹形状 |
+| `sample_dt` | 轨迹输出采样间隔 | 影响 tracker 输入分辨率 |
+| `t_min` | 每段最小时长 | 太小可能让轨迹变快但不平滑或 final check 失败 |
+
+## Coupling
+
+Upstream:
+JPS path 决定拓扑和初值；raw costmap 决定 ESDF 间距；`/odom` 决定起点速度边界。
+
+Downstream:
+`traj_tracker` 直接消费 `/planner/traj_samples`。MINCO 的速度/加速度假设必须与 tracker 的 `v_max/acc_lim` 和 Gazebo 真实响应匹配。
+
+## Important implementation details
+
+- 当前 launch 覆盖 `t_min=1.0`；代码默认值不是有效运行时值。
+- 曾尝试降低 `t_min` 提速，但会增加 fallback 和贴墙风险；不要无验证地恢复。
+- `/perception/esdf_2d` 点云不是 MINCO 的主输入；MINCO 使用 raw costmap 构建内部 `EsdfMap2D`。
+
+## Local checks
+
+```bash
+ros2 topic echo /planner/path --once
+ros2 topic echo /planner/traj_samples --once
+tail -n 80 /tmp/planner.log
+```
+
+重点看日志中的 `MINCO final check`、`min_d`、`wp_shift`、`max_v`、`max_a`、`v_viol`、`a_viol` 和 fallback 消息。
+
+## Personal understanding / open questions
+
+- 当前 `a_max=16.0` 与 tracker `acc_lim=12.0`、Gazebo 实际加速度是否匹配？
+- duration 当前固定是否限制了高速急弯性能？
